@@ -34,7 +34,7 @@ python3 scripts/patch-figma.py
 bash scripts/launch-experiment.sh
 ```
 
-默认读取“应用程序”目录中的 `Figma.app`，生成 `.local/Figma Plugin Experiment.app`。副本使用独立的应用标识和本地临时签名，沿用现有 Figma 本地配置；启动脚本会检查原版是否仍在运行。临时签名可能触发系统权限或登录提示。
+默认读取“应用程序”目录中的 `Figma.app`，生成 `.local/Figma Plugin Experiment.app`。副本使用独立的应用标识和本地临时签名，沿用现有 Figma 本地配置；启动脚本会检查默认安装位置的原版进程。临时签名可能触发系统权限或登录提示。
 
 打开只读设计文件，在 **Main menu → Plugins → Development** 中导入插件的 `manifest.json`，然后运行插件。也可以从 macOS 屏幕顶部的 **Plugins** 菜单进入。
 
@@ -51,20 +51,30 @@ bash scripts/launch-experiment.sh
 
 | Figma 版本 | 桌面规则、菜单测试、打包、签名与启动 | 实际只读文件中的插件验证 |
 | --- | --- | --- |
-| 126.10.13 | 已通过 | 待验证 |
 | 126.11.7 arm64 | 已通过 | Development 入口、Plumb 配对、选区样式读取、PNG 截图和 SVG 导出已验证 |
+| 126.11.8 arm64 | 已通过 | Plumb 自动重连、26 个选区节点及样式读取、PNG 截图和 SVG 导出已验证 |
 
 `--check` 通过仅说明桌面规则匹配。网页资源可以独立更新，其他构建、文件和插件仍需实际验证。
 
 ## 重建与自定义路径
 
-更新补丁代码或 Figma 后，退出副本并重建：
+原版 Figma 版本未变时，更新补丁代码后退出副本并重建：
 
 ```bash
 python3 scripts/patch-figma.py --refresh
 ```
 
-`--refresh` 会核对现有副本与上次构建报告，拒绝覆盖不匹配的应用。
+`--refresh` 会核对现有副本的路径及 ASAR 哈希是否与上次构建报告一致，再更新 ASAR 和应用配置；不会重新复制原生程序及框架。
+
+副本不会随原版自动升级。原版 Figma 升级后，正常退出副本，再检查新版是否兼容；检查通过后仅删除生成的应用副本，重新完整复制和打补丁：
+
+```bash
+python3 scripts/patch-figma.py --check &&
+rm -rf ".local/Figma Plugin Experiment.app" &&
+python3 scripts/patch-figma.py
+```
+
+保留 `.local/` 中的 Plumb 运行目录及报告。构建后按快速开始中的命令启动副本。
 
 可指定其他源应用和输出位置，将示例中的相对路径替换为实际位置：
 
@@ -73,7 +83,7 @@ python3 scripts/patch-figma.py --source "./apps/Figma.app" --check
 python3 scripts/patch-figma.py --source "./apps/Figma.app" --output "./patched/Figma Patched.app"
 ```
 
-再次构建相同的自定义输出时，使用相同参数并追加 `--refresh`。`launch-experiment.sh` 只启动默认位置的副本；自定义输出需自行启动。
+再次构建时保留原来的 `--source`、`--output` 参数：只更新补丁代码可追加 `--refresh`；原版升级则需删除对应的应用副本后完整重建。`launch-experiment.sh` 只启动默认位置的副本；自定义输出需自行启动，其他位置的原版也需先退出。
 
 每个输出路径在 `.local/builds/<output-id>/` 中保存独立的原始主脚本、修改后主脚本和 `patch-report.json`。构建结果会打印 `artifactDirectory`；默认输出另外保留 `.local/patch-report.json`，报告记录版本、源路径和文件哈希。
 
@@ -166,9 +176,9 @@ node scripts/verify-frontend-patch.mjs ./bundles/main.js ./bundles/permissions.j
 - `report.json`：适配器版本、哈希与失败原因，资源 URL 移除查询参数。
 - `repair-request.md`：供 Codex 等工具修复适配器的说明。
 
-根据诊断材料修复 `frontend-adapter.cjs`，补充回归并检查新旧网页脚本，再退出副本执行 `--refresh`。桌面规则失配时则需先更新 `desktop-rules.json`，重新检查打包、签名和菜单行为。
+根据诊断材料修复 `frontend-adapter.cjs`，补充回归并检查新旧网页脚本，再退出副本，按[重建与自定义路径](#重建与自定义路径)选择重建方式。桌面规则失配时则需先更新 `desktop-rules.json`，重新检查打包、签名和菜单行为。
 
-生成的应用、下载资源和调试材料保存在 Git 忽略的 `.local/` 中。仓库包含补丁源码、测试、Acorn 和 Plumb 安装包，不包含 Figma 安装包或应用副本。
+默认应用副本、构建报告和手动下载的网页脚本保存在 Git 忽略的 `.local/` 中。运行时缓存与失败诊断位于 Figma 配置目录；Plumb 导出文件以工具返回的路径为准。仓库包含补丁源码、测试、Acorn 和 Plumb 安装包，不包含 Figma 安装包或应用副本。
 
 ## 许可证
 

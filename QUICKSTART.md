@@ -2,7 +2,7 @@
 
 通过 Plumb，让 Codex 读取 Figma 选中图层的样式、间距、截图和图片资源。
 
-已验证组合：Figma 126.11.7 arm64、Plumb 0.13.3，验证记录截至 2026-11-10。设计文件保持只读，补丁不提供服务端编辑权限。
+已验证组合：Figma 126.11.8 arm64、Plumb 0.13.3，验证记录截至 2026-11-10。设计文件保持只读，补丁不提供服务端编辑权限。
 
 ## 1. 准备环境
 
@@ -87,10 +87,19 @@ git -C figma-plugins-patch pull --ff-only
 unzip -o figma-plugins-patch-source.zip
 ```
 
-正常退出副本后，重新构建并启动：
+原版 Figma 版本未变、仅更新补丁源码时，正常退出副本后重新构建并启动：
 
 ```bash
 python3 figma-plugins-patch/scripts/patch-figma.py --refresh
+bash figma-plugins-patch/scripts/launch-experiment.sh
+```
+
+原版 Figma 升级后，副本需完整重建。正常退出副本，执行以下命令；只有兼容性检查通过，才会删除生成的应用副本并重新复制：
+
+```bash
+python3 figma-plugins-patch/scripts/patch-figma.py --check &&
+rm -rf "figma-plugins-patch/.local/Figma Plugin Experiment.app" &&
+python3 figma-plugins-patch/scripts/patch-figma.py &&
 bash figma-plugins-patch/scripts/launch-experiment.sh
 ```
 
