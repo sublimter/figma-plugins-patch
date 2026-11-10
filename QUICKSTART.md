@@ -40,23 +40,20 @@ python3 figma-plugins-patch/scripts/patch-figma.py
 
 ## 3. 安装 Plumb 并接入 Codex
 
-安装已验证版本的 Plumb：
+使用仓库内置的 Plumb 0.13.3 安装包，其中包含 MCP 服务和已编译的 Figma 插件：
 
 ```bash
-npm install --prefix ./plumb-runtime plumb-mcp@0.13.3
+npm install --prefix ./figma-plugins-patch/.local/plumb-runtime ./figma-plugins-patch/vendor/plumb-mcp-0.13.3.tgz
 ```
 
-资料包内包含 `plumb-mcp-0.13.3.tgz` 时，也可以用下面的命令代替上述安装命令：
-
-```bash
-npm install --prefix ./plumb-runtime ./plumb-mcp-0.13.3.tgz
-```
+安装包随源码提供；npm 仍会安装其声明的运行依赖。
 
 注册 MCP 服务，并输出插件 manifest 的位置：
 
 ```bash
-codex mcp add plumb -- "$(node -p 'process.execPath')" "$PWD/plumb-runtime/node_modules/plumb-mcp/dist/index.js"
-echo "$PWD/plumb-runtime/node_modules/plumb-mcp/figma-plugin/manifest.json"
+codex mcp add plumb -- "$(node -p 'process.execPath')" "$PWD/figma-plugins-patch/.local/plumb-runtime/node_modules/plumb-mcp/dist/index.js"
+codex mcp list
+echo "$PWD/figma-plugins-patch/.local/plumb-runtime/node_modules/plumb-mcp/figma-plugin/manifest.json"
 ```
 
 保留最后输出的路径。重新打开 Codex 会话，请 Codex 调用 `plumb_status`，记下 `plugin.bridgePort`，用于辨认要配对的服务。

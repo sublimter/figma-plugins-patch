@@ -77,11 +77,35 @@ python3 scripts/patch-figma.py --source "./apps/Figma.app" --output "./patched/F
 
 每个输出路径在 `.local/builds/<output-id>/` 中保存独立的原始主脚本、修改后主脚本和 `patch-report.json`。构建结果会打印 `artifactDirectory`；默认输出另外保留 `.local/patch-report.json`，报告记录版本、源路径和文件哈希。
 
-## 接入 Plumb
+## 安装 Plumb 并配置 Codex
 
-按照 [Plumb MCP](https://github.com/tathagat22/plumb-mcp) 的文档安装或构建 Figma 插件，在 **Development → Import plugin from manifest…** 中选择它的 `figma-plugin/manifest.json`。
+仓库内置 [Plumb MCP 0.13.3 安装包](vendor/plumb-mcp-0.13.3.tgz)，包含 MCP 服务和已编译的 Figma 插件。先安装 Codex CLI，再在仓库根目录执行：
 
-运行插件并完成本地服务器配对后，分别确认插件 UI 可打开、`plumb_status` 已连接、选中节点可读取，再验证所需的截图和资源导出操作。
+```bash
+npm install --prefix ./.local/plumb-runtime ./vendor/plumb-mcp-0.13.3.tgz
+codex mcp add plumb -- "$(node -p 'process.execPath')" "$PWD/.local/plumb-runtime/node_modules/plumb-mcp/dist/index.js"
+codex mcp list
+```
+
+安装包随源码提供；npm 仍会安装其声明的运行依赖。注册命令使用当前目录生成路径，安装后需保留仓库目录。移动目录后，重新注册 MCP 服务并重新选择插件 manifest。
+
+重新打开 Codex 会话，通过 `/mcp` 查看 Plumb 服务，再请 Codex 调用 `plumb_status`，记下返回的 `plugin.bridgePort`。
+
+输出插件 manifest 的位置：
+
+```bash
+echo "$PWD/.local/plumb-runtime/node_modules/plumb-mcp/figma-plugin/manifest.json"
+```
+
+在 Figma 中打开 **Plugins → Development → Import plugin from manifest…**，按 `⌘⇧G` 粘贴上述路径并导入。运行 **Plumb**，在与 `bridgePort` 对应的服务旁点击 **Pair**。保持插件运行，再请 Codex 调用 `plumb_status`，确认 `plugin.connected: true`，且 `plugin.fileName` 为目标文件。
+
+在 Figma 中选中图层，然后向 Codex 提出需求，例如：
+
+```text
+读取当前选中图层的尺寸、布局、颜色和字体，并导出截图及图片资源。
+```
+
+Codex 通过 Plumb MCP 读取和导出设计信息，这种插件连接方式无需配置 Figma REST token。完整步骤与更新方法见 [快速入门](QUICKSTART.md)；MCP 配置方式见 [Codex 官方文档](https://developers.openai.com/codex/mcp/)。
 
 ## 实现与目录
 
@@ -101,7 +125,7 @@ scripts/frontend-adapter.cjs        网页脚本分析与适配
 scripts/plugin-access-hook.cjs      资源拦截、缓存与失败诊断
 scripts/verify-*.mjs                菜单、前端及运行钩子验证
 tests/                             Python 测试与前端夹具
-vendor/                            随源码提供的 Acorn 解析器及许可证
+vendor/                            Acorn 解析器、Plumb 安装包及第三方许可证
 ```
 
 ## 验证
@@ -144,8 +168,8 @@ node scripts/verify-frontend-patch.mjs ./bundles/main.js ./bundles/permissions.j
 
 根据诊断材料修复 `frontend-adapter.cjs`，补充回归并检查新旧网页脚本，再退出副本执行 `--refresh`。桌面规则失配时则需先更新 `desktop-rules.json`，重新检查打包、签名和菜单行为。
 
-生成的应用、下载资源和调试材料保存在 Git 忽略的 `.local/` 中。仓库包含补丁源码、测试和 Acorn，不包含 Figma 安装包、应用副本或 Plumb 插件。
+生成的应用、下载资源和调试材料保存在 Git 忽略的 `.local/` 中。仓库包含补丁源码、测试、Acorn 和 Plumb 安装包，不包含 Figma 安装包或应用副本。
 
 ## 许可证
 
-项目采用 [MIT License](LICENSE)。Acorn 的许可证见 [vendor/ACORN-LICENSE](vendor/ACORN-LICENSE)。
+项目采用 [MIT License](LICENSE)。Acorn 的许可证见 [vendor/ACORN-LICENSE](vendor/ACORN-LICENSE)，Plumb 的许可证见 [vendor/PLUMB-LICENSE](vendor/PLUMB-LICENSE)。
