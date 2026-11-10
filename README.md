@@ -2,14 +2,14 @@
 
 为 macOS 版 Figma 的只读设计文件恢复 Plugins 菜单和本地开发插件入口。
 
-项目从已安装的 Figma 创建独立应用副本，修补桌面菜单与网页编辑器中的插件权限判断，使只读文件可以显示 **Plugins → Development → Import plugin from manifest…** 等入口，便于运行 Plumb 等读取设计信息的插件。文档本身仍为只读，服务端编辑权限和付费功能不在补丁范围内。
+项目从已安装的 Figma 创建独立应用副本，修补桌面菜单与网页编辑器中的插件权限判断，使只读文件可以显示 **Plugins → Development → Import plugin from manifest…** 等入口，便于运行 Figma Desktop Bridge、Plumb 等读取设计信息的插件。文档本身仍为只读，服务端编辑权限和付费功能不在补丁范围内。
 
-需要通过 Plumb 接入 Codex 时，参见 [快速入门](QUICKSTART.md)。
+通过 **Figma Console MCP + 本地 Desktop Bridge** 接入 Codex，参见 [快速入门](QUICKSTART.md)。**此本地方案无需添加 Figma key，也无需配置个人访问令牌（PAT / `FIGMA_ACCESS_TOKEN`）。** Plumb 仍可作为[可选方案](#可选安装-plumb-并配置-codex)。
 
 ## 环境要求
 
 - macOS，已安装 Figma 桌面客户端。
-- Python 3、Node.js 20+，以及系统提供的 `ditto`、`codesign`。
+- Python 3、Node.js 22.x（至少 22.13.0，已验证 22.22.2）或 24+，以及系统提供的 `ditto`、`codesign`。
 - Acorn 8.16.0 已包含在 `vendor/` 中，无需运行 `npm install`。
 
 ## 快速开始
@@ -74,7 +74,7 @@ rm -rf ".local/Figma Plugin Experiment.app" &&
 python3 scripts/patch-figma.py
 ```
 
-保留 `.local/` 中的 Plumb 运行目录及报告。构建后按快速开始中的命令启动副本。
+保留 `.local/` 中的 MCP 运行目录及报告。构建后按快速开始中的命令启动副本。
 
 可指定其他源应用和输出位置，将示例中的相对路径替换为实际位置：
 
@@ -87,7 +87,31 @@ python3 scripts/patch-figma.py --source "./apps/Figma.app" --output "./patched/F
 
 每个输出路径在 `.local/builds/<output-id>/` 中保存独立的原始主脚本、修改后主脚本和 `patch-report.json`。构建结果会打印 `artifactDirectory`；默认输出另外保留 `.local/patch-report.json`，报告记录版本、源路径和文件哈希。
 
-## 安装 Plumb 并配置 Codex
+## 安装 Figma Console MCP 并配置 Codex
+
+已验证 Console MCP **1.46.0** 通过本地 Desktop Bridge 读取选区、节点、布局、颜色样式并导出 PNG/SVG。其运行依赖的 Node 要求高于主包声明，按上述环境要求准备 Node 和 npm，安装 Codex CLI 后在仓库根目录执行：
+
+```bash
+npm install --prefix ./.local/figma-console-runtime --save-exact figma-console-mcp@1.46.0
+codex mcp add figma-console -- "$(node -p 'process.execPath')" "$PWD/.local/figma-console-runtime/node_modules/figma-console-mcp/dist/local.js"
+codex mcp list
+echo "$PWD/.local/figma-console-runtime/node_modules/figma-console-mcp/figma-desktop-bridge/manifest.json"
+```
+
+安装需要访问 npm registry，运行目录保存在 Git 忽略的 `.local/`。在 `~/.codex/config.toml` 已有的 `[mcp_servers.figma-console]` 表内补充以下两项，不要新建第二个同名表：
+
+```toml
+startup_timeout_sec = 120.0
+tool_timeout_sec = 300.0
+```
+
+重新打开 Codex 会话，在 Figma 中导入上述 manifest 并运行 **Figma Desktop Bridge**。插件会扫描本地端口并自动连接，使用期间保持运行。请 Codex 调用 `figma_diagnose` 和 `figma_get_status({"probe": true})`，确认目标文件正确且主动探测成功，再读取选区。安装、导入及使用步骤见 [快速入门](QUICKSTART.md)；数据核对和已知限制见 [验证说明](docs/FIGMA-CONSOLE-VERIFICATION.md)。
+
+本地读取和 PNG/SVG 导出不依赖 Figma key。`fileKey` 是插件自动报告的文件标识，不是密钥，无需手动填写。需要 REST API 的功能或回退路径仍需 PAT，并受 [Figma REST 限流规则](https://developers.figma.com/docs/rest-api/rate-limits/)约束。当前版本未发现本地 Bridge 的按次或按月额度限制；Codex 自身的使用额度仍单独计算。
+
+服务 1.46.0 随包提供的插件版本为 1.41.5，属于匹配组合，不能仅因版本号不同判断插件过期。移动仓库后需重新注册 MCP 并重新导入对应 manifest；升级 Node 后也需确认注册的 Node 路径仍存在。更多配置说明见 [Codex MCP 文档](https://developers.openai.com/codex/mcp/)，上游项目见 [Figma Console MCP](https://github.com/southleft/figma-console-mcp)。
+
+## 可选：安装 Plumb 并配置 Codex
 
 仓库内置 [Plumb MCP 0.13.3 安装包](vendor/plumb-mcp-0.13.3.tgz)，包含 MCP 服务和已编译的 Figma 插件。先安装 Codex CLI，再在仓库根目录执行：
 
@@ -115,7 +139,7 @@ echo "$PWD/.local/plumb-runtime/node_modules/plumb-mcp/figma-plugin/manifest.jso
 读取当前选中图层的尺寸、布局、颜色和字体，并导出截图及图片资源。
 ```
 
-Codex 通过 Plumb MCP 读取和导出设计信息，这种插件连接方式无需配置 Figma REST token。完整步骤与更新方法见 [快速入门](QUICKSTART.md)；MCP 配置方式见 [Codex 官方文档](https://developers.openai.com/codex/mcp/)。
+Codex 通过 Plumb MCP 读取和导出设计信息，这种插件连接方式也无需配置 Figma key / REST token。更新补丁副本的方法见 [快速入门](QUICKSTART.md)。
 
 ## 实现与目录
 
@@ -134,6 +158,7 @@ scripts/launch-experiment.sh        默认副本启动脚本
 scripts/frontend-adapter.cjs        网页脚本分析与适配
 scripts/plugin-access-hook.cjs      资源拦截、缓存与失败诊断
 scripts/verify-*.mjs                菜单、前端及运行钩子验证
+docs/FIGMA-CONSOLE-VERIFICATION.md   本地 Console MCP 的读取、导出与限制说明
 tests/                             Python 测试与前端夹具
 vendor/                            Acorn 解析器、Plumb 安装包及第三方许可证
 ```
@@ -178,7 +203,7 @@ node scripts/verify-frontend-patch.mjs ./bundles/main.js ./bundles/permissions.j
 
 根据诊断材料修复 `frontend-adapter.cjs`，补充回归并检查新旧网页脚本，再退出副本，按[重建与自定义路径](#重建与自定义路径)选择重建方式。桌面规则失配时则需先更新 `desktop-rules.json`，重新检查打包、签名和菜单行为。
 
-默认应用副本、构建报告和手动下载的网页脚本保存在 Git 忽略的 `.local/` 中。运行时缓存与失败诊断位于 Figma 配置目录；Plumb 导出文件以工具返回的路径为准。仓库包含补丁源码、测试、Acorn 和 Plumb 安装包，不包含 Figma 安装包或应用副本。
+默认应用副本、MCP 运行目录、构建报告和手动下载的网页脚本保存在 Git 忽略的 `.local/` 中。运行时缓存与失败诊断位于 Figma 配置目录；Console MCP 的导出内容可保存到 `.local/figma-exports/`，Plumb 导出文件以工具返回的路径为准。仓库包含补丁源码、测试、Acorn 和 Plumb 安装包，不包含 Figma 安装包、应用副本或真实设计文件的导出数据。
 
 ## 许可证
 
