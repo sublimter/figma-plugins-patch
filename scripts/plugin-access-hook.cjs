@@ -58,7 +58,7 @@ function prepareBundle(original, { directory, url = "unknown", references = [] }
         "请基于 source.js 和 report.json 修复 scripts/frontend-adapter.cjs。\n" +
         "保持目标唯一匹配、局部状态副本、匿名限制和其他编辑器行为；添加回归用例。\n" +
         "运行 node scripts/verify-frontend-patch.mjs <本目录/source.js>；若有 reference-0.js，将其路径追加在命令后，并对旧版脚本回归。\n" +
-        "自动测试后仍需验证实际只读文件的 Plugins、Plumb 选区读取和资源导出。\n");
+        "自动测试后仍需验证实际只读文件的 Plugins、Console MCP 选区读取和资源导出。\n");
       error.diagnosticDirectory = failure;
     } catch (storageError) {
       console.error("[plugin-experiment] cannot save diagnostics:", storageError.message);

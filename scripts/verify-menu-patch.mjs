@@ -76,7 +76,7 @@ const after = load(patched, menu.after, patched.includes(action.after) ? action.
 let checks = 0;
 for (const type of ["run-local-plugin", "run-installed-plugin", "run-last"]) {
   const action = { type, localFileId: 42, command: "read", showError: "view-only" };
-  const item = { type: "run-menu-action", name: { string: "Plumb" }, disabled: true, menuAction: action };
+  const item = { type: "run-menu-action", name: { string: "Figma Desktop Bridge" }, disabled: true, menuAction: action };
   assert.equal(before.menu(item).enabled, false);
   const menu = after.menu(item);
   assert.equal(menu.enabled, true);

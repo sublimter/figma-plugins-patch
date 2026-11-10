@@ -4,7 +4,7 @@
 
 **无需添加 Figma key，无需配置个人访问令牌（PAT / `FIGMA_ACCESS_TOKEN`）。** 本文使用本地插件通道；REST API 功能另行需要 Token。
 
-已验证 Console MCP 1.46.0 与其随包插件 1.41.5 的本地读取、PNG/SVG 导出，验证记录截至 2026-11-10。设计文件保持只读，补丁不提供服务端编辑权限。已有 Plumb 用户也可沿用 [README 中的可选方案](README.md#可选安装-plumb-并配置-codex)。
+已验证 Console MCP 1.46.0 与其随包插件 1.41.5 的本地读取、PNG/SVG 导出，验证记录截至 2026-11-10。设计文件保持只读，补丁不提供服务端编辑权限。
 
 ## 1. 准备环境
 
@@ -56,14 +56,14 @@ codex mcp list
 echo "$PWD/figma-plugins-patch/.local/figma-console-runtime/node_modules/figma-console-mcp/figma-desktop-bridge/manifest.json"
 ```
 
-保留最后输出的路径。在 `~/.codex/config.toml` 已有的 `[mcp_servers.figma-console]` 表内补充两项，不要再创建同名表：
+保留最后输出的路径。在 `~/.codex/config.toml` 已有的 `[mcp_servers.figma-console]` 表内、`command` 和 `args` 后补充两项；已有同名项时修改其值，不要重复添加表或键：
 
 ```toml
 startup_timeout_sec = 120.0
 tool_timeout_sec = 300.0
 ```
 
-重新打开 Codex 会话，通过 `/mcp` 确认出现 `figma-console`。该配置直接启动官方 npm 包中的 MCP 服务，不需要另外编写 JS 调用脚本，也不需要执行 `codex mcp login`。
+重新打开 Codex 会话，通过 `/mcp` 确认出现 `figma-console`。该配置直接启动已安装的 Console MCP 服务，不需要另外编写 JS 调用脚本，也不需要执行 `codex mcp login`。
 
 ## 4. 导入并使用插件
 
